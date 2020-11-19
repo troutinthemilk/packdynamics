@@ -1,0 +1,140 @@
+---
+title: "Pack dynamics data exploration and other potential systems"
+output: html_notebook
+---
+
+# Wolves
+
+## YNP population
+
+```{r setup, include=FALSE, echo=F}
+library(ggplot2)#plotting functions
+library(ggthemes) #more themes!
+library(gridExtra)
+library(wesanderson)
+library(RColorBrewer)
+
+theme_set(theme_tufte()) # a theme I like.
+theme_update(plot.title = element_text(hjust = 0.5), 
+             axis.line.x = element_line(color="black", size = 1),
+             axis.line.y = element_line(color="black", size = 1),
+             text=element_text(size=20),
+             axis.text=element_text(size=15)) #center all titles and and axis lines
+```
+
+Mange was introduced in 2007. Are there any differences in pack dynamics pre- and post-2007?
+```{r, echo=F}
+library(ggplot2)
+library(MuMIn)
+YSdata <- read.table(file='../Data/YNP_WolfPacks.csv', sep=',', header=T)
+
+
+ggplot(data=YSdata, aes(x=Year, y=PackSize)) +
+  geom_line(size=1, col="gray") + 
+  geom_point(size=2, aes(col=Pre2007)) +
+  ylab("Average pack size")
+
+ggplot(data=YSdata, aes(x=Pre2007, y=PackSize)) +
+  geom_boxplot()
+```
+
+
+From the above figure, it does look liek the average group size dropped after 2007. Looking at the time series, the popuation also dropped. Of course cause and effect here is unclear but the pattern in compelling.
+```{r, echo=F}
+p1 <- ggplot(data=YSdata, aes(x=Year, y=Size)) +
+  geom_line(size=1, col="gray") + 
+  geom_point(size=2, aes(col=Pre2007)) +
+  ylab("Population size")
+
+p2 <- ggplot(data=YSdata, aes(x=Size, y=PackSize)) +
+  #geom_line(size=1, col="gray") + 
+  geom_point(size=2, aes(col=Pre2007)) +
+  ylab("Average group size") + xlab("Population size")
+
+grid.arrange(p1,p2, nrow=1)
+
+```
+
+Our crucial variable of interest is the average pack size versus the population size. Is this relationship linear or is there a nonlinear relationship? Below is a figure:
+```{r}
+
+
+ggplot(data=YSdata, aes(x=Size, y=Packs)) +
+  #geom_line(size=1, col="gray") + 
+  geom_smooth(se=F, col="grey") +
+  geom_point(size=2, aes(col=Pre2007)) +
+  ylab("Packs") + xlab("Population size")
+```
+While not super-compelling there may be a saturating effect where there is a cap on the average group size.  Below I test a linear model against a polynomial model:
+
+```{r}
+
+mod1 <- lm(Packs~ Size* Pre2007, data=YSdata)
+mod2 <- lm(Packs~ Size, data=YSdata)
+mod3 <- lm(Packs~ Size + I(Size^2), data=YSdata)
+mod4 <- lm(Packs~ Size + I(Size^2)-1, data=YSdata)
+
+model.sel(list(mod1, mod2, mod3, mod4))
+```
+According to AICc there is not much evidence for or against a nonlinear trend in these data. Getting data from before 2000 would be ideal for resolving this.
+
+
+## Scandanavian wolf populations
+
+Data come from Chapron et al 2016 through 2014, then from 2014 from NINA. Will need earlier data... Have some for sweden but not sure if its comparable or the source....
+```{r, echo=F}
+Scandata <- read.table(file='../Data/ScanWolves.csv', sep=',', header=T)
+
+p1 <- ggplot(data=Scandata, aes(x=Year, y=Size)) +
+  geom_line(size=1, col="gray") + 
+  geom_point(size=2) +
+  ylab("Population estimate")
+
+p2 <- ggplot(data=Scandata, aes(x=Year, y=PackSize)) +
+  geom_line(size=1, col="gray") + 
+  geom_point(size=2) +
+  ylab("Average pack size")
+
+grid.arrange(p1, p2, nrow=1)
+
+ggplot(data=Scandata, aes(x=Size, y=Packs)) +
+  geom_smooth( se=F, col="grey") +
+  geom_point(size=2) +
+  ylab("Packs") + xlab("Population size") 
+
+mod1 <- lm(Packs~ Size, data=Scandata)
+mod2 <- lm(Packs~ Size + I(Size^2), data=Scandata)
+mod3 <- lm(Packs~ Size + I(Size^2)-1, data=Scandata)
+
+model.sel(list(mod1, mod2, mod3))
+```
+Some evidence here that the nubumer of packs scales nonlinearly with the populations size, börk börk börk!
+
+## Other wolf populations
+
+- Isle Royale
+  - Abundances data through [1976](http://npshistory.com/series/science/11/chap2.htm)
+  - just two packs through 1976. did a third form later?
+
+
+# Orca
+
+- Residents (fixed number of groups)
+  - PNW pods
+  - Canada pods
+  - Alaska pods
+- Transient (variable number of groups) 
+  - descriptive study [Baird et al. 1995](https://pdfs.semanticscholar.org/af84/33767d2c2948b479194ec92e084394f882cb.pdf)
+
+# Lions
+
+- Fryxell data (fixed number of groups (i think!))
+- Becker data in Zambia? 
+- Packer et al 1990, Why lions form groups: food is not enough.
+  - groups used to forage but also defend young, territory, and carcasses.
+  - looks at number of females per group
+...
+
+# Sticklebacks
+
+- Milinski 1979
