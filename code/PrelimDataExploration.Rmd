@@ -35,7 +35,7 @@ ggplot(data=YSdata, aes(x=Year, y=PackSize)) +
   ylab("Average pack size")
 
 ggplot(data=YSdata, aes(x=Pre2007, y=PackSize)) +
-  geom_boxplot()
+  geom_boxplot() + ylab("Average pack size")
 ```
 
 
@@ -44,12 +44,14 @@ From the above figure, it does look liek the average group size dropped after 20
 p1 <- ggplot(data=YSdata, aes(x=Year, y=Size)) +
   geom_line(size=1, col="gray") + 
   geom_point(size=2, aes(col=Pre2007)) +
-  ylab("Population size")
+  ylab("Population size") +
+  theme(legend.position = "none")
 
 p2 <- ggplot(data=YSdata, aes(x=Size, y=PackSize)) +
   #geom_line(size=1, col="gray") + 
   geom_point(size=2, aes(col=Pre2007)) +
-  ylab("Average group size") + xlab("Population size")
+  ylab("Average group size") + xlab("Population size") +
+  theme(legend.position = "none")
 
 grid.arrange(p1,p2, nrow=1)
 
@@ -58,26 +60,48 @@ grid.arrange(p1,p2, nrow=1)
 Our crucial variable of interest is the average pack size versus the population size. Is this relationship linear or is there a nonlinear relationship? Below is a figure:
 ```{r}
 
-
 ggplot(data=YSdata, aes(x=Size, y=Packs)) +
   #geom_line(size=1, col="gray") + 
-  geom_smooth(se=F, col="grey") +
+  #geom_smooth(se=F, col="grey") +
   geom_point(size=2, aes(col=Pre2007)) +
   ylab("Packs") + xlab("Population size")
 ```
 While not super-compelling there may be a saturating effect where there is a cap on the average group size.  Below I test a linear model against a polynomial model:
 
-```{r}
+```{r, echo=F, eval=F}
 
-mod1 <- lm(Packs~ Size* Pre2007, data=YSdata)
+#mod1 <- lm(Packs~ Size* Pre2007, data=YSdata)
 mod2 <- lm(Packs~ Size, data=YSdata)
 mod3 <- lm(Packs~ Size + I(Size^2), data=YSdata)
 mod4 <- lm(Packs~ Size + I(Size^2)-1, data=YSdata)
 
 model.sel(list(mod1, mod2, mod3, mod4))
 ```
-According to AICc there is not much evidence for or against a nonlinear trend in these data. Getting data from before 2000 would be ideal for resolving this.
 
+```{r}
+powlaw1 <- function(X, a, b, c) {
+  exp(b)*X^c + a
+}
+powlaw2 <- function(X, b, c) {
+  exp(b)*X^c
+}
+
+YNP1.fit <- nls(Packs ~ powlaw1(AdultsYearlings, a, b, c), start=list(a=0, b=0.15, c=0.5), data=YSdata, nls.control(tol=1e-4, maxiter=1e4, warnOnly = TRUE))
+YNP2.fit <- nls(Packs ~ powlaw2(AdultsYearlings, b, c), start=list(b=0.15, c=0.5), data=YSdata, nls.control(tol=1e-4, maxiter=1e4, warnOnly = TRUE))
+
+model.sel(list(YNP1.fit, YNP2.fit))
+
+coef(YNP2.fit)
+
+plot(x=x, y=YSdata$Packs)
+with(as.list(coef(YNP2.fit)), curve(powlaw2(x, b = b, c=c), lwd = 2, add = TRUE))
+#lines(pop.pred, mod0$pred, col='red')
+
+#mod0 <- lm(log(Packs) ~ log(Size), data=YSdata)
+coef(YNP2.fit)
+confint(YNP2.fit)
+```
+The regression indicates a powerlaw relationship between packs and wolf density with $P=1.1\, W^{0.5}$.
 
 ## Scandanavian wolf populations
 
@@ -101,13 +125,29 @@ ggplot(data=Scandata, aes(x=Size, y=Packs)) +
   geom_smooth( se=F, col="grey") +
   geom_point(size=2) +
   ylab("Packs") + xlab("Population size") 
-
-mod1 <- lm(Packs~ Size, data=Scandata)
-mod2 <- lm(Packs~ Size + I(Size^2), data=Scandata)
-mod3 <- lm(Packs~ Size + I(Size^2)-1, data=Scandata)
-
-model.sel(list(mod1, mod2, mod3))
 ```
+
+
+```{r}
+
+Scan1.fit <- nls(Packs ~ powlaw1(Size, a, b, c), start=list(a=0, b=0.15, c=0.5), data=Scandata, nls.control(tol=1e-4, maxiter=1e4, warnOnly = TRUE))
+Scan2.fit <- nls(Packs ~ powlaw2(Size, b, c), start=list(b=0.15, c=0.5), data=Scandata, nls.control(tol=1e-4, maxiter=1e4, warnOnly = TRUE))
+
+model.sel(list(Scan1.fit, Scan2.fit))
+
+coef(Scan1.fit)
+
+plot(x=Scandata$Size, y=Scandata$Packs)
+with(as.list(coef(Scan1.fit)), curve(powlaw1(x, a=a, b = b, c=c), lwd = 2, add = TRUE))
+#lines(pop.pred, mod0$pred, col='red')
+
+#mod0 <- lm(log(Packs) ~ log(Size), data=YSdata)
+coef(Scan1.fit)
+confint(Scan1.fit)
+```
+
+In this case the relationship is $P=9.52\,W^{0.37} - 45.78$.
+
 Some evidence here that the nubumer of packs scales nonlinearly with the populations size, börk börk börk!
 
 ## Other wolf populations
