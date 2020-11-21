@@ -129,7 +129,6 @@ ggplot(data=Scandata, aes(x=Size, y=Packs)) +
 
 
 ```{r}
-
 Scan1.fit <- nls(Packs ~ powlaw1(Size, a, b, c), start=list(a=0, b=0.15, c=0.5), data=Scandata, nls.control(tol=1e-4, maxiter=1e4, warnOnly = TRUE))
 Scan2.fit <- nls(Packs ~ powlaw2(Size, b, c), start=list(b=0.15, c=0.5), data=Scandata, nls.control(tol=1e-4, maxiter=1e4, warnOnly = TRUE))
 
